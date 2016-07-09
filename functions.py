@@ -1,28 +1,30 @@
 import csv
 import os
 import re
+
+import itertools
+
 import product
 from time import sleep
 
-# Constants
+# Headers as dictionary
+headersDict = {}
+with open('oHeaders.txt') as f:
+    headers = [x.strip('\n') for x in f.readlines()]
+    d = dict()
+    i = 0
+    for item in headers:
+        d.update({item:i})
+        i += 1
+    headersDict = d
 
-OPTION1_NAME = 7
-OPTION1_VALUE = 8
-OPTION2_NAME = 9
-OPTION2_VALUE = 10
-OPTION3_NAME = 11
-OPTION3_VALUE = 12
-
-headers = []
-
-
+# Headers as List
 def getHeaders():
     headers = []
-    with open('headers.txt') as f:
+    with open('oHeaders.txt') as f:
         headers = [x.strip('\n') for x in f.readlines()]
         headers.append('')
     return headers
-
 
 
 # data[row][column]
@@ -47,21 +49,23 @@ def parseFile(cfile, ofile):
         headers = getHeaders()
         reader = csv.DictReader(csv_i)
 
-        w = csv.DictWriter(csv_o, headers, '', 'raise')
+        w = csv.DictWriter(csv_o, headers, '', 'ignore')
         w.writeheader()
         for row in reader:
             tags = ''
             title = ''
+            oTitle = ''
             for key, value in row.items():
                 if key in csv_strings:
                     lines[key] = parseTitle(value)
                 else:
                     lines[key] = value
-                if key in tagKey:
+                if key in tagKey and oTitle:
                     theseTags = value.replace(" ", ", ")
                     tags += theseTags.lower()
                     tags += ', '
                 if key == 'Title':
+                    oTitle = value
                     strList = value.split()
                     for item in replaceStr:
                         if item in strList:
@@ -81,6 +85,7 @@ def parseTitle(s):
     temp = ''
     temp = s.title()
     temp = re.sub(r"(?<=')[A-Z]", lambda m: m.group().lower(), temp)
+    # look for anything in parenthesis
     temp = re.sub(r"\(([^\)]+)\)", '', temp)
     temp = re.sub(r"[\d\-)(]*\d[\d\-)(]*", '', temp)
     return temp
@@ -124,10 +129,7 @@ def sortVariants(cfile, ofile):
                 # shouldn't happen
                 pass
             writer.writerow(row)
-        variantSizes = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE',
-                        'XLARGE', 'X-LARGE', 'X-Large', 'small', 'medium',
-                        'large', 'M', 'XL', 'MD']
-        variantColors = ['GREEN', 'RED', 'BLACK', 'BLUE']
+
     finally:
         csv_i.close()
         csv_o.close()
@@ -136,11 +138,12 @@ def sortVariants(cfile, ofile):
         if len(item.getVariants()) > 0:
             variants = item.getVariants()
             for item in variants:
-                pass
+                parseItem(cfile, ofile, item, isVariant=True)
         elif item.getTitle() not in headers:
-            parseItem(cfile, ofile, item, variantSizes, variantColors)
+            parseItem(cfile, ofile, item, isVariant=False)
+        else:
+            pass
 
-    # not sure how this would work
     randFileName = 'randFileGenDoNotNameFileThisKek8327239423.csv'
 
     cmd = 'cp ' + ofile + ' ' + randFileName
@@ -156,13 +159,11 @@ def editCell(cfile, ofile, vrow, col, data):
     try:
         r = csv.reader(csv_i)
         w = csv.writer(csv_o)
-        i = 0
-        for row in r:
-            lines = row
-            if i == vrow:
-                lines[col] = data
-            w.writerow(lines)
-            i += 1
+
+        lines = [l for l in r]
+        lines[vrow][col] = data
+        w.writerows(lines)
+
     finally:
         csv_i.close()
         csv_o.close()
@@ -171,20 +172,52 @@ def editCell(cfile, ofile, vrow, col, data):
 
 
 # reader writer
-def parseItem(cfile, ofile, product, sizes, colors):
-    editCell(cfile, ofile, product.getRownum(), OPTION1_NAME, 'Size')
-    editCell(cfile, ofile, product.getRownum(), OPTION1_VALUE, 'TEST THIS SHIT')
-    # for size in sizes:
-    # if size in product.getTitle():
-    #   editCell(cfile, ofile, product.getRownum(), OPTION1_NAME, 'Size')
-    #   editCell(cfile, ofile, product.getRownum(), OPTION1_VALUE, size)
-    # else:
-    #     editCell(cfile, ofile, product.getRownum(), OPTION1_NAME, 'Size')
-    #     editCell(cfile, ofile, product.getRownum(), OPTION1_VALUE, 'TESTTHISSHIT')
+def parseItem(cfile, ofile, product, isVariant):
+
+    if isVariant:
+        editSize(cfile, ofile, product)
+        editColor(cfile, ofile, product)
+    else:
+        editSize(cfile, ofile, product)
+        editColor(cfile, ofile, product)
+
+
+def editSize(cfile, ofile, product):
+
+    sizes = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE',
+             'XLARGE', 'X-LARGE', 'X-Large', 'small', 'medium',
+             'large', 'M', 'XL', 'MD', 'TEEN', 'CHILD']
+
+    m = re.search(r"\(([^\)]+)\)", product.getTitle())
+    if m:
+        editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Name'], 'Size')
+        editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Value'], m.group(1))
+    else:
+        for size in sizes:
+            if size in product.getTitle():
+                editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Name'], 'Size')
+                editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Value'], size)
+                break
+
+
+def editVariant(cfile, ofile, product):
+
+    editCell(cfile, ofile, product.getRownum(), headersDict['Title'], '')
+    editCell(cfile, ofile, product.getRownum(), headersDict['Vendor'], '')
+    editCell(cfile, ofile, product.getRownum(), headersDict['Type'], '')
+    editCell(cfile, ofile, product.getRownum(), headersDict['Tags'], '')
+    editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Name'], '')
+    editCell(cfile, ofile, product.getRownum(), headersDict['Option2 Name'], '')
+    editCell(cfile, ofile, product.getRownum(), headersDict['Option3 Name'], '')
+
+
+def editColor(cfile, ofile, product):
+
+    colors = ['GREEN', 'RED', 'BLACK', 'BLUE']
 
     for color in colors:
         if color in product.getTitle():
-            editCell(cfile, ofile, product.getRownum(), OPTION2_NAME, 'Color')
-            editCell(cfile, ofile, product.getRownum(), OPTION2_VALUE, color)
-        else:
-            pass
+            editCell(cfile, ofile, product.getRownum(), headersDict['Option2 Name'], 'Color')
+            editCell(cfile, ofile, product.getRownum(), headersDict['Option2 Value'], color)
+            break
+
