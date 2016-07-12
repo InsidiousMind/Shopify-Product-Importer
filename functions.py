@@ -26,20 +26,27 @@ def getHeaders():
         headers.append('')
     return headers
 
+def parseTitleStr(s):
+    replaceStr = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE', '-LG',
+              'small', 'medium', 'large', 'M', 'XL', 'X-Large',
+              'S/P', 'DLX', 'X', 'T', 'GREEN', 'RED', 'BLACK',
+              'BLUE', 'MD']
+
+    strList = s.split()
+    for item in replaceStr:
+        if item in strList:
+            strList.remove(item)
+    title = ' '.join(strList).title()
+    return parseTitle(title)
 
 # data[row][column]
 def parseFile(cfile, ofile):
     # constant stuff
 
-    csv_strings = ['Handle', 'Title', 'Type', 'Vendor', 'Option1 Value',
+    csv_strings = ['Title', 'Type', 'Vendor', 'Option1 Value',
                    'Attribute', 'Variant Size']
 
     tagKey = ['Title', 'Variant Size', 'Type']
-
-    replaceStr = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE', '-LG',
-                  'small', 'medium', 'large', 'M', 'XL', 'X-Large',
-                  'S/P', 'DLX', 'X', 'T', 'GREEN', 'RED', 'BLACK',
-                  'BLUE', 'MD']
 
     csv_i = open(cfile, 'r+')
     csv_o = open(ofile, 'w')
@@ -55,23 +62,21 @@ def parseFile(cfile, ofile):
             tags = ''
             title = ''
             oTitle = ''
+            if(row['Title'] == ''):
+                oTitle = ''
+            else:
+                oTitle = 'Thing'
             for key, value in row.items():
                 if key in csv_strings:
                     lines[key] = parseTitle(value)
                 else:
                     lines[key] = value
-                if key in tagKey and oTitle:
+                if key == 'Title':
+                    title = parseTitleStr(value)
+                if key in tagKey and oTitle != '':
                     theseTags = value.replace(" ", ", ")
                     tags += theseTags.lower()
                     tags += ', '
-                if key == 'Title':
-                    oTitle = value
-                    strList = value.split()
-                    for item in replaceStr:
-                        if item in strList:
-                            strList.remove(item)
-                    title = ' '.join(strList).title()
-                    title = parseTitle(title)
             lines['Tags'] += tags
             lines['Title'] = title
             w.writerow(lines)
@@ -133,9 +138,11 @@ def sortVariants(cfile, ofile):
     finally:
         csv_i.close()
         csv_o.close()
+
     headers = getHeaders()
     for item in productList:
         if len(item.getVariants()) > 0:
+            parseItem(cfile, ofile, item, isVariant=False)
             variants = item.getVariants()
             for item in variants:
                 parseItem(cfile, ofile, item, isVariant=True)
@@ -149,7 +156,6 @@ def sortVariants(cfile, ofile):
     cmd = 'cp ' + ofile + ' ' + randFileName
     os.system(cmd)
     return randFileName
-
 
 def editCell(cfile, ofile, vrow, col, data):
     # inputCSV.csv
@@ -175,12 +181,22 @@ def editCell(cfile, ofile, vrow, col, data):
 def parseItem(cfile, ofile, product, isVariant):
 
     if isVariant:
+        addHandle(cfile, ofile, product)
         editSize(cfile, ofile, product)
         editColor(cfile, ofile, product)
+        editVariant(cfile, ofile, product)
     else:
+        addHandle(cfile, ofile, product)
         editSize(cfile, ofile, product)
         editColor(cfile, ofile, product)
 
+
+def addHandle(cfile, ofile, product):
+    title = parseTitleStr(product.getTitle())
+    title = title.lower()
+    title = title.replace(' ', '-')
+
+    editCell(cfile, ofile, product.getRownum(), 0, title)
 
 def editSize(cfile, ofile, product):
 
