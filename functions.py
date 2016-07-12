@@ -8,6 +8,8 @@ import product
 from time import sleep
 
 # Headers as dictionary
+# makes a dictionary of shopify headers
+# glob var
 headersDict = {}
 with open('oHeaders.txt') as f:
     headers = [x.strip('\n') for x in f.readlines()]
@@ -19,13 +21,14 @@ with open('oHeaders.txt') as f:
     headersDict = d
 
 # Headers as List
+# get shopify headers as a list
 def getHeaders():
     headers = []
     with open('oHeaders.txt') as f:
         headers = [x.strip('\n') for x in f.readlines()]
         headers.append('')
     return headers
-
+# need to consolidate parseTitleStr and parseTitle -> the goal for both methods is the same
 def parseTitleStr(s):
     replaceStr = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE', '-LG',
               'small', 'medium', 'large', 'M', 'XL', 'X-Large',
@@ -42,7 +45,7 @@ def parseTitleStr(s):
 # data[row][column]
 def parseFile(cfile, ofile):
     # constant stuff
-
+    # strings for .title()
     csv_strings = ['Title', 'Type', 'Vendor', 'Option1 Value',
                    'Attribute', 'Variant Size']
 
@@ -62,10 +65,12 @@ def parseFile(cfile, ofile):
             tags = ''
             title = ''
             oTitle = ''
+            # a hack just to get rid of tags for variants. fix this
             if(row['Title'] == ''):
                 oTitle = ''
             else:
                 oTitle = 'Thing'
+            # capitalize, create tags and title. these methods are mostly A.OK
             for key, value in row.items():
                 if key in csv_strings:
                     lines[key] = parseTitle(value)
@@ -85,7 +90,7 @@ def parseFile(cfile, ofile):
         csv_i.close()
         csv_o.close()
 
-
+# use regex to remove unwanted things from title
 def parseTitle(s):
     temp = ''
     temp = s.title()
@@ -95,12 +100,9 @@ def parseTitle(s):
     temp = re.sub(r"[\d\-)(]*\d[\d\-)(]*", '', temp)
     return temp
 
-
+# puts variants in a list. does this by first 6 characters of the title.
+# if the first 6 chars is the same as another title it's classified as a variant
 def sortVariants(cfile, ofile):
-    # cmd = 'cp ' + ofile + ' temp.csv'
-    # os.system(cmd)
-    # sleep(1)
-    # temp = 'temp.csv'
 
     # inputCSV.csv
     csv_i = open(cfile, 'r')
@@ -138,7 +140,7 @@ def sortVariants(cfile, ofile):
     finally:
         csv_i.close()
         csv_o.close()
-
+# makes variants
     headers = getHeaders()
     for item in productList:
         if len(item.getVariants()) > 0:
@@ -156,7 +158,9 @@ def sortVariants(cfile, ofile):
     cmd = 'cp ' + ofile + ' ' + randFileName
     os.system(cmd)
     return randFileName
-
+# methods below are horribly un optimized and need to be fixed
+# one option is putting the entire CSV into a 2D list and editing values based upon that
+# http://stackoverflow.com/questions/24606650/reading-csv-file-and-inserting-it-into-2d-list-in-python
 def editCell(cfile, ofile, vrow, col, data):
     # inputCSV.csv
     csv_i = open(cfile, 'r')

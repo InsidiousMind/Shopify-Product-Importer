@@ -12,4 +12,5 @@ Optimization Checklist:
   IE brown werewolf, Grey werewolf
  make Lg Sm etc Large Small etc. for readability
  Recognize Lg Sm etc with regex instead of hardcoded lists
+ find a better way to do things instead of rand file name gens
 
