@@ -2,13 +2,15 @@ import csv
 import os
 import re
 
-import itertools
-
 import product
 from time import sleep
 
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+# GLOBALS
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+
 # Headers as dictionary
-# makes a dictionary of shopify headers
+# makes a dictionary of shopify original shopify headers
 # glob var
 headersDict = {}
 with open('oHeaders.txt') as f:
@@ -22,12 +24,51 @@ with open('oHeaders.txt') as f:
 
 # Headers as List
 # get shopify headers as a list
-def getHeaders():
-    headers = []
-    with open('oHeaders.txt') as f:
-        headers = [x.strip('\n') for x in f.readlines()]
-        headers.append('')
-    return headers
+headers = []
+with open('oHeaders.txt') as f:
+    headers = [x.strip('\n') for x in f.readlines()]
+    headers.append('')
+
+# array to hold csv file while it's being heavily modified
+array = list(list())
+
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+# GLOBALS
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+# CSV Editing Methods
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+def make2dArray(cfile):
+    csv_i = open(cfile, 'r')
+
+    try:
+        r = csv.reader(csv_i)
+
+        data = list(r)
+    finally:
+        csv_i.close()
+
+    return data
+
+def editCell(vrow, col, data):
+    global array
+    array[vrow][col] = data
+
+def writeCells(ofile):
+    global array
+    csv_o = open(ofile, 'w')
+    try:
+        w = csv.writer(csv_o)
+        w.writerows(array)
+    finally:
+        csv_o.close()
+
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+# CSV Editing Methods
+# /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+
+
 # need to consolidate parseTitleStr and parseTitle -> the goal for both methods is the same
 def parseTitleStr(s):
     replaceStr = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE', '-LG',
@@ -40,15 +81,36 @@ def parseTitleStr(s):
         if item in strList:
             strList.remove(item)
     title = ' '.join(strList).title()
+
     return parseTitle(title)
+
+
+def modifyHeaders(cfile, ofile):
+    global headers
+    global array
+    array = make2dArray(cfile)
+    print
+
+
+#regex to remove unwanted things from the title
+def parseTitle(s):
+    temp = ''
+    temp = s.title()
+    temp = re.sub(r"(?<=')[A-Z]", lambda m: m.group().lower(), temp)
+    # look for anything in parenthesis
+    temp = re.sub(r"\(([^\)]+)\)", '', temp)
+    temp = re.sub(r"[\d\-)(]*\d[\d\-)(]*", '', temp)
+    return temp
+
 
 # data[row][column]
 def parseFile(cfile, ofile):
-    # constant stuff
+    global headers
     # strings for .title()
     csv_strings = ['Title', 'Type', 'Vendor', 'Option1 Value',
                    'Attribute', 'Variant Size']
 
+    #keys to be used for tags
     tagKey = ['Title', 'Variant Size', 'Type']
 
     csv_i = open(cfile, 'r+')
@@ -56,7 +118,7 @@ def parseFile(cfile, ofile):
 
     try:
         lines = {}
-        headers = getHeaders()
+
         reader = csv.DictReader(csv_i)
 
         w = csv.DictWriter(csv_o, headers, '', 'ignore')
@@ -90,15 +152,6 @@ def parseFile(cfile, ofile):
         csv_i.close()
         csv_o.close()
 
-# use regex to remove unwanted things from title
-def parseTitle(s):
-    temp = ''
-    temp = s.title()
-    temp = re.sub(r"(?<=')[A-Z]", lambda m: m.group().lower(), temp)
-    # look for anything in parenthesis
-    temp = re.sub(r"\(([^\)]+)\)", '', temp)
-    temp = re.sub(r"[\d\-)(]*\d[\d\-)(]*", '', temp)
-    return temp
 
 # puts variants in a list. does this by first 6 characters of the title.
 # if the first 6 chars is the same as another title it's classified as a variant
@@ -121,6 +174,8 @@ def sortVariants(cfile, ofile):
         for row in reader:
             # get the variants and put them in a list of products
             # Product.variants is list of product variants per product
+
+            # if first 6 characters of title not in variant list, make new variant
             if row[1][:6] not in variantList:
                 variantList.append(row[1][:6])
                 temp = product.Product(row[1], i)
@@ -140,104 +195,89 @@ def sortVariants(cfile, ofile):
     finally:
         csv_i.close()
         csv_o.close()
+
 # makes variants
-    headers = getHeaders()
+    global headers
+    global array
+    array = make2dArray(cfile)
     for item in productList:
+        # if item has variants, parse it
         if len(item.getVariants()) > 0:
             parseItem(cfile, ofile, item, isVariant=False)
             variants = item.getVariants()
             for item in variants:
                 parseItem(cfile, ofile, item, isVariant=True)
+            # just to avoid header row
         elif item.getTitle() not in headers:
             parseItem(cfile, ofile, item, isVariant=False)
         else:
             pass
+    writeCells(ofile)
 
     randFileName = 'randFileGenDoNotNameFileThisKek8327239423.csv'
 
     cmd = 'cp ' + ofile + ' ' + randFileName
     os.system(cmd)
     return randFileName
-# methods below are horribly un optimized and need to be fixed
-# one option is putting the entire CSV into a 2D list and editing values based upon that
-# http://stackoverflow.com/questions/24606650/reading-csv-file-and-inserting-it-into-2d-list-in-python
-def editCell(cfile, ofile, vrow, col, data):
-    # inputCSV.csv
-    csv_i = open(cfile, 'r')
-    # output.csv
-    csv_o = open(ofile, 'w')
-    try:
-        r = csv.reader(csv_i)
-        w = csv.writer(csv_o)
-
-        lines = [l for l in r]
-        lines[vrow][col] = data
-        w.writerows(lines)
-
-    finally:
-        csv_i.close()
-        csv_o.close()
-    cmd = 'cp ' + ofile + ' ' + cfile
-    os.system(cmd)
 
 
-# reader writer
-def parseItem(cfile, ofile, product, isVariant):
+def parseItem(product, isVariant):
 
     if isVariant:
-        addHandle(cfile, ofile, product)
-        editSize(cfile, ofile, product)
-        editColor(cfile, ofile, product)
-        editVariant(cfile, ofile, product)
+        addHandle(product)
+        editSize(product)
+        editColor(product)
+        editVariant(product)
     else:
-        addHandle(cfile, ofile, product)
-        editSize(cfile, ofile, product)
-        editColor(cfile, ofile, product)
+        addHandle(product)
+        editSize(product)
+        editColor(product)
 
 
-def addHandle(cfile, ofile, product):
+def addHandle(product):
     title = parseTitleStr(product.getTitle())
     title = title.lower()
     title = title.replace(' ', '-')
 
-    editCell(cfile, ofile, product.getRownum(), 0, title)
+    editCell(product.getRownum(), 0, title)
 
-def editSize(cfile, ofile, product):
-
+def editSize(product):
+    global headersDict
     sizes = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE',
              'XLARGE', 'X-LARGE', 'X-Large', 'small', 'medium',
              'large', 'M', 'XL', 'MD', 'TEEN', 'CHILD']
 
     m = re.search(r"\(([^\)]+)\)", product.getTitle())
     if m:
-        editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Name'], 'Size')
-        editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Value'], m.group(1))
+        editCell(product.getRownum(), headersDict['Option1 Name'], 'Size')
+        editCell(product.getRownum(), headersDict['Option1 Value'], m.group(1))
     else:
         for size in sizes:
             if size in product.getTitle():
-                editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Name'], 'Size')
-                editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Value'], size)
+                editCell(product.getRownum(), headersDict['Option1 Name'], 'Size')
+                editCell(product.getRownum(), headersDict['Option1 Value'], size)
                 break
 
 
-def editVariant(cfile, ofile, product):
+def editVariant(product):
+    global headersDict
 
-    editCell(cfile, ofile, product.getRownum(), headersDict['Title'], '')
-    editCell(cfile, ofile, product.getRownum(), headersDict['Vendor'], '')
-    editCell(cfile, ofile, product.getRownum(), headersDict['Type'], '')
-    editCell(cfile, ofile, product.getRownum(), headersDict['Tags'], '')
-    editCell(cfile, ofile, product.getRownum(), headersDict['Option1 Name'], '')
-    editCell(cfile, ofile, product.getRownum(), headersDict['Option2 Name'], '')
-    editCell(cfile, ofile, product.getRownum(), headersDict['Option3 Name'], '')
+    editCell(product.getRownum(), headersDict['Title'], '')
+    editCell(product.getRownum(), headersDict['Vendor'], '')
+    editCell(product.getRownum(), headersDict['Type'], '')
+    editCell(product.getRownum(), headersDict['Tags'], '')
+    editCell(product.getRownum(), headersDict['Option1 Name'], '')
+    editCell(product.getRownum(), headersDict['Option2 Name'], '')
+    editCell(product.getRownum(), headersDict['Option3 Name'], '')
 
 
-def editColor(cfile, ofile, product):
+def editColor(product):
 
     colors = ['GREEN', 'RED', 'BLACK', 'BLUE']
 
     for color in colors:
         if color in product.getTitle():
-            editCell(cfile, ofile, product.getRownum(), headersDict['Option2 Name'], 'Color')
-            editCell(cfile, ofile, product.getRownum(), headersDict['Option2 Value'], color)
+            editCell(product.getRownum(), headersDict['Option2 Name'], 'Color')
+            editCell(product.getRownum(), headersDict['Option2 Value'], color)
             break
 

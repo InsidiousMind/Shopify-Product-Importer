@@ -1,2 +1,0 @@
-CSV file is: inputCsv.csv
-Output file is:  output.csv
