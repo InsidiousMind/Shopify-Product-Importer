@@ -32,6 +32,9 @@ with open('oHeaders.txt') as f:
 # array to hold csv file while it's being heavily modified
 array = list(list())
 
+productList = list()
+
+
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
 # GLOBALS
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
@@ -39,6 +42,8 @@ array = list(list())
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
 # CSV Editing Methods
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
+
+# basically readCells method
 def make2dArray(cfile):
     csv_i = open(cfile, 'r')
 
@@ -89,7 +94,6 @@ def modifyHeaders(cfile, ofile):
     global headers
     global array
     array = make2dArray(cfile)
-    print
 
 
 #regex to remove unwanted things from the title
@@ -152,25 +156,43 @@ def parseFile(cfile, ofile):
         csv_i.close()
         csv_o.close()
 
+def writeNewHeaders(cfile,ofile):
+    global array
+    array = make2dArray(cfile)
+    replaceStr = {"Item Name" : "Title", "Brief Description" : "Body (HTML)", "Size" : "Option1 Value" , "Regular Price" : "Variant Price",
+                  "MSRP" : "Variant Compare At Price", "UPC" : "Variant Barcode", "Department Name":"Type", "Vendor Name":"Vendor","Qty 1":"Qty",}
+
+    for i in range(0, len(array[0])):
+        for k, v in replaceStr.items():
+            if k == array[0][i]:
+                array[0][i] = v
+                break
+
+    writeCells(ofile)
+
+
+
+
+
 
 # puts variants in a list. does this by first 6 characters of the title.
 # if the first 6 chars is the same as another title it's classified as a variant
 def sortVariants(cfile, ofile):
-
     # inputCSV.csv
     csv_i = open(cfile, 'r')
     # output.csv
     csv_o = open(ofile, 'w')
 
     # for holding product objects
-    productList = []
+    global productList
     # for hodling the variants we already touched
     variantList = []
 
     try:
         reader = csv.reader(csv_i)
-        writer = csv.writer(csv_o)
         i = 0
+
+        # just reads csv file into variants
         for row in reader:
             # get the variants and put them in a list of products
             # Product.variants is list of product variants per product
@@ -190,26 +212,29 @@ def sortVariants(cfile, ofile):
             else:
                 # shouldn't happen
                 pass
-            writer.writerow(row)
 
     finally:
         csv_i.close()
-        csv_o.close()
-
+#make productlist global and then make this it's own function
 # makes variants
+
+def parseVariants(cfile, ofile):
+
+    global productList
     global headers
     global array
+
     array = make2dArray(cfile)
     for item in productList:
         # if item has variants, parse it
         if len(item.getVariants()) > 0:
-            parseItem(cfile, ofile, item, isVariant=False)
+            parseItem(item, isVariant=False)
             variants = item.getVariants()
             for item in variants:
-                parseItem(cfile, ofile, item, isVariant=True)
+                parseItem(item, isVariant=True)
             # just to avoid header row
         elif item.getTitle() not in headers:
-            parseItem(cfile, ofile, item, isVariant=False)
+            parseItem(item, isVariant=False)
         else:
             pass
     writeCells(ofile)
@@ -237,6 +262,7 @@ def parseItem(product, isVariant):
 def addHandle(product):
     title = parseTitleStr(product.getTitle())
     title = title.lower()
+    title = title.strip()
     title = title.replace(' ', '-')
 
     editCell(product.getRownum(), 0, title)

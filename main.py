@@ -4,10 +4,15 @@ import getopt
 import sys
 import os
 import functions
-
+from random import randint
+csvfile = ''
+outputfile = ''
+randFilesList = []
 
 def main(argv):
+    global csvfile
     csvfile = ''
+    global outputfile
     outputfile = ''
 
     if len(argv) < 1:
@@ -31,17 +36,49 @@ def main(argv):
     print("Output file is: ", outputfile)
     if outputfile == '':
         outputfile = 'a.csv'
-
-    new_cfile = 'randFileGen3235435345234132543.csv'
     cmd = 'touch ' + outputfile
     os.system(cmd)
+
+    new_cfile = newCFile()
+    functions.writeNewHeaders(new_cfile, outputfile)
+    new_i = cFileFromOutput()
+    functions.sortVariants(new_i, outputfile)
+    # CHANGE THIS TO NEW_F ONCE SORTVARIANTS FINISHED
+    functions.parseFile(new_i, outputfile)
+    new_i = cFileFromOutput()
+    functions.parseVariants(new_i, outputfile)
+
+    deleteFiles()
+
+
+def newCFile():
+    global csvfile
+    global outputfile
+    rand_num = randint(100000,9999999)
+    new_cfile = 'randFileGen' + str(rand_num) + '.csv'
     cmd = 'cp ' + csvfile + ' ' + new_cfile
     os.system(cmd)
 
-    new_f = functions.sortVariants(new_cfile, outputfile)
+    randFilesList.append(new_cfile)
+    return new_cfile
 
-    # CHANGE THIS TO NEW_F ONCE SORTVARIANTS FINISHED
-    functions.parseFile(new_f, outputfile)
+def cFileFromOutput():
+
+    global csvfile
+    global outputfile
+    rand_num = randint(100000,9999999)
+    new_cfile = 'randFileGen' + str(rand_num) + '.csv'
+    cmd = 'cp ' + outputfile + ' ' + new_cfile
+    os.system(cmd)
+
+    randFilesList.append(new_cfile)
+    return new_cfile
+
+def deleteFiles():
+
+    for item in randFilesList:
+        cmd = 'rm ' + item
+        os.system(cmd)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
