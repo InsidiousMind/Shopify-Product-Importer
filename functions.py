@@ -160,7 +160,7 @@ def writeNewHeaders(cfile,ofile):
     global array
     array = make2dArray(cfile)
     replaceStr = {"Item Name" : "Title", "Brief Description" : "Body (HTML)", "Size" : "Option1 Value" , "Regular Price" : "Variant Price",
-                  "MSRP" : "Variant Compare At Price", "UPC" : "Variant Barcode", "Department Name":"Type", "Vendor Name":"Vendor","Qty 1":"Qty",}
+                  "MSRP" : "Variant Compare At Price", "UPC" : "Variant Barcode", "Department Name":"Type", "Vendor Name":"Vendor","Qty 1":"Variant Inventory Quantity",}
 
     for i in range(0, len(array[0])):
         for k, v in replaceStr.items():
@@ -295,6 +295,9 @@ def editVariant(product):
     editCell(product.getRownum(), headersDict['Option1 Name'], '')
     editCell(product.getRownum(), headersDict['Option2 Name'], '')
     editCell(product.getRownum(), headersDict['Option3 Name'], '')
+    editCell(product.getRownum(), headersDict['Variant Inventory Policy'], 'deny')
+    editCell(product.getRownum(), headersDict['Variant Fulfillment Service'], 'manual')
+    editCell(product.getRownum(), headersDict['Variant Inventory Tracker'], 'shopify')
 
 
 def editColor(product):
