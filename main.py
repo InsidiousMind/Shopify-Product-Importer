@@ -36,16 +36,30 @@ def main(argv):
     print("Output file is: ", outputfile)
     if outputfile == '':
         outputfile = 'a.csv'
+
+
+    prefix = input("Enter a prefix for the title: ")
+    suffix = input("Enter a suffix for the title: ")
+
     cmd = 'touch ' + outputfile
     os.system(cmd)
 
     new_cfile = newCFile()
+
+    # functions OK
     functions.writeNewHeaders(new_cfile, outputfile)
+
     new_i = cFileFromOutput()
+
+    # functions OK
     functions.sortVariants(new_i, outputfile)
-    # CHANGE THIS TO NEW_F ONCE SORTVARIANTS FINISHED
-    functions.parseFile(new_i, outputfile)
+
+    # functions
+    functions.parseFile(new_i, outputfile, prefix, suffix)
+
     new_i = cFileFromOutput()
+
+    # functions
     functions.parseVariants(new_i, outputfile)
 
     deleteFiles()

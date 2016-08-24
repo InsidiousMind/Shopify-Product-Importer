@@ -79,7 +79,7 @@ def parseTitleStr(s):
     replaceStr = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE', '-LG',
               'small', 'medium', 'large', 'M', 'XL', 'X-Large',
               'S/P', 'DLX', 'X', 'T', 'GREEN', 'RED', 'BLACK',
-              'BLUE', 'MD']
+              'BLUE', 'MD', 'XS']
 
     strList = s.split()
     for item in replaceStr:
@@ -108,7 +108,7 @@ def parseTitle(s):
 
 
 # data[row][column]
-def parseFile(cfile, ofile):
+def parseFile(cfile, ofile, prefix, suffix):
     global headers
     # strings for .title()
     csv_strings = ['Title', 'Type', 'Vendor', 'Option1 Value',
@@ -149,7 +149,7 @@ def parseFile(cfile, ofile):
                     tags += theseTags.lower()
                     tags += ', '
             lines['Tags'] += tags
-            lines['Title'] = title
+            lines['Title'] = prefix + ' ' + title + ' ' + suffix
             w.writerow(lines)
 
     finally:
@@ -159,8 +159,10 @@ def parseFile(cfile, ofile):
 def writeNewHeaders(cfile,ofile):
     global array
     array = make2dArray(cfile)
-    replaceStr = {"Item Name" : "Title", "Brief Description" : "Body (HTML)", "Size" : "Option1 Value" , "Regular Price" : "Variant Price",
-                  "MSRP" : "Variant Compare At Price", "UPC" : "Variant Barcode", "Department Name":"Type", "Vendor Name":"Vendor","Qty 1":"Variant Inventory Quantity",}
+    replaceStr = {"Item Name" : "Title", "Brief Description" : "Body (HTML)", "Size" : "Option1 Value" ,
+                  "Regular Price" : "Variant Price", "MSRP" : "Variant Compare At Price",
+                  "UPC" : "Variant Barcode", "Department Name":"Type", "Vendor Name":"Vendor",
+                  "Qty 1":"Variant Inventory Qty", "Inventory":"Variant Inventory Qty"}
 
     for i in range(0, len(array[0])):
         for k, v in replaceStr.items():
@@ -169,10 +171,6 @@ def writeNewHeaders(cfile,ofile):
                 break
 
     writeCells(ofile)
-
-
-
-
 
 
 # puts variants in a list. does this by first 6 characters of the title.
@@ -253,10 +251,12 @@ def parseItem(product, isVariant):
         editSize(product)
         editColor(product)
         editVariant(product)
+        generalEdits(product)
     else:
         addHandle(product)
         editSize(product)
         editColor(product)
+        generalEdits(product)
 
 
 def addHandle(product):
@@ -280,12 +280,38 @@ def editSize(product):
     else:
         for size in sizes:
             if size in product.getTitle():
+                size = parseSize(size)
                 editCell(product.getRownum(), headersDict['Option1 Name'], 'Size')
-                editCell(product.getRownum(), headersDict['Option1 Value'], size)
+                editCell(product.getRownum(), headersDict['Option1 Value'], size.title())
                 break
 
+def parseSize(str):
+    xsmall = ['XS']
+    small = ['SM', 'SMALL', 'S', 'small']
+    medium = ['MED','MEDIUM','medium','M','MD','std','STD']
+    large = ['LG','LARGE','large','l','L']
+    xlarge = ['XLARGE','X-LARGE','X-Large','XL']
+
+    if str in small:
+        str = 'Small'
+    elif str in xsmall:
+        str = 'Extra Small'
+    elif str in medium:
+        str = 'Medium'
+    elif str in large:
+        str = 'Large'
+    elif str in xlarge:
+        str = 'Extra Large'
+    return str
+
+def generalEdits(product):
+    editCell(product.getRownum(), headersDict['Variant Requires Shipping'], 'True')
+    editCell(product.getRownum(), headersDict['Variant Inventory Policy'], 'deny')
+    editCell(product.getRownum(), headersDict['Variant Fulfillment Service'], 'manual')
+    editCell(product.getRownum(), headersDict['Variant Inventory Tracker'], 'shopify')
 
 def editVariant(product):
+
     global headersDict
 
     editCell(product.getRownum(), headersDict['Title'], '')
@@ -295,10 +321,6 @@ def editVariant(product):
     editCell(product.getRownum(), headersDict['Option1 Name'], '')
     editCell(product.getRownum(), headersDict['Option2 Name'], '')
     editCell(product.getRownum(), headersDict['Option3 Name'], '')
-    editCell(product.getRownum(), headersDict['Variant Inventory Policy'], 'deny')
-    editCell(product.getRownum(), headersDict['Variant Fulfillment Service'], 'manual')
-    editCell(product.getRownum(), headersDict['Variant Inventory Tracker'], 'shopify')
-
 
 def editColor(product):
 
