@@ -38,8 +38,8 @@ def main(argv):
         outputfile = 'a.csv'
 
 
-    prefix = input("Enter a prefix for the title: ")
-    suffix = input("Enter a suffix for the title: ")
+    # prefix = input("Enter a prefix for the title: ")
+    # suffix = input("Enter a suffix for the title: ")
 
     cmd = 'touch ' + outputfile
     os.system(cmd)
@@ -55,7 +55,7 @@ def main(argv):
     functions.sortVariants(new_i, outputfile)
 
     # functions
-    functions.parseFile(new_i, outputfile, prefix, suffix)
+    functions.parseFile(new_i, outputfile)
 
     new_i = cFileFromOutput()
 

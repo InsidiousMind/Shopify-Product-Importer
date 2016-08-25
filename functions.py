@@ -1,8 +1,10 @@
 import csv
 import os
 import re
-
 import product
+from nltk.stem import WordNetLemmatizer
+import inflect
+
 from time import sleep
 
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
@@ -31,9 +33,8 @@ with open('oHeaders.txt') as f:
 
 # array to hold csv file while it's being heavily modified
 array = list(list())
-
+oldFileArray = list(list())
 productList = list()
-
 
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
 # GLOBALS
@@ -90,12 +91,6 @@ def parseTitleStr(s):
     return parseTitle(title)
 
 
-def modifyHeaders(cfile, ofile):
-    global headers
-    global array
-    array = make2dArray(cfile)
-
-
 #regex to remove unwanted things from the title
 def parseTitle(s):
     temp = ''
@@ -103,12 +98,14 @@ def parseTitle(s):
     temp = re.sub(r"(?<=')[A-Z]", lambda m: m.group().lower(), temp)
     # look for anything in parenthesis
     temp = re.sub(r"\(([^\)]+)\)", '', temp)
-    temp = re.sub(r"[\d\-)(]*\d[\d\-)(]*", '', temp)
+
+    #lok for sequences of numbers
+    temp = re.sub(r"[\d\-)(]*\d[\+\d\-)(]*", '', temp)
     return temp
 
 
 # data[row][column]
-def parseFile(cfile, ofile, prefix, suffix):
+def parseFile(cfile, ofile):
     global headers
     # strings for .title()
     csv_strings = ['Title', 'Type', 'Vendor', 'Option1 Value',
@@ -149,7 +146,7 @@ def parseFile(cfile, ofile, prefix, suffix):
                     tags += theseTags.lower()
                     tags += ', '
             lines['Tags'] += tags
-            lines['Title'] = prefix + ' ' + title + ' ' + suffix
+            lines['Title'] = title
             w.writerow(lines)
 
     finally:
@@ -157,7 +154,9 @@ def parseFile(cfile, ofile, prefix, suffix):
         csv_o.close()
 
 def writeNewHeaders(cfile,ofile):
+    global oldFileArray
     global array
+    oldFileArray = make2dArray(cfile)
     array = make2dArray(cfile)
     replaceStr = {"Item Name" : "Title", "Brief Description" : "Body (HTML)", "Size" : "Option1 Value" ,
                   "Regular Price" : "Variant Price", "MSRP" : "Variant Compare At Price",
@@ -223,6 +222,7 @@ def parseVariants(cfile, ofile):
     global array
 
     array = make2dArray(cfile)
+
     for item in productList:
         # if item has variants, parse it
         if len(item.getVariants()) > 0:
@@ -243,29 +243,27 @@ def parseVariants(cfile, ofile):
     os.system(cmd)
     return randFileName
 
-
 def parseItem(product, isVariant):
-
     if isVariant:
+        generalEdits(product)
         addHandle(product)
         editSize(product)
         editColor(product)
         editVariant(product)
-        generalEdits(product)
     else:
+        generalEdits(product)
         addHandle(product)
         editSize(product)
         editColor(product)
-        generalEdits(product)
-
 
 def addHandle(product):
-    title = parseTitleStr(product.getTitle())
-    title = title.lower()
-    title = title.strip()
-    title = title.replace(' ', '-')
+    handle = parseTitleStr(product.getTitle())
+    handle = handle.lower()
+    handle = handle.strip()
+    handle = handle.replace(' ', '-')
 
-    editCell(product.getRownum(), 0, title)
+    editCell(product.getRownum(), headersDict['Handle'], handle)
+
 
 def editSize(product):
     global headersDict
@@ -291,6 +289,7 @@ def parseSize(str):
     medium = ['MED','MEDIUM','medium','M','MD','std','STD']
     large = ['LG','LARGE','large','l','L']
     xlarge = ['XLARGE','X-LARGE','X-Large','XL']
+    std = ['STD', 'std', 'stdrd']
 
     if str in small:
         str = 'Small'
@@ -302,6 +301,8 @@ def parseSize(str):
         str = 'Large'
     elif str in xlarge:
         str = 'Extra Large'
+    elif str in std:
+        str = 'Standard'
     return str
 
 def generalEdits(product):
@@ -309,6 +310,52 @@ def generalEdits(product):
     editCell(product.getRownum(), headersDict['Variant Inventory Policy'], 'deny')
     editCell(product.getRownum(), headersDict['Variant Fulfillment Service'], 'manual')
     editCell(product.getRownum(), headersDict['Variant Inventory Tracker'], 'shopify')
+    addPS(product)
+
+def getPrefix(key, rownum):
+    i = 0
+    while(oldFileArray[0][i]) != key:
+        i += 1
+    p = inflect.engine()
+    if(p.singular_noun(oldFileArray[rownum][i])) == False:
+        return oldFileArray[rownum][i].lower()
+    else:
+        return str(p.singular_noun(oldFileArray[rownum][i].lower()))
+
+def getSuffix(key, rownum):
+    i = 0
+    while(oldFileArray[0][i]) != key:
+        i += 1
+
+    wnl = WordNetLemmatizer()
+
+    return wnl.lemmatize(oldFileArray[rownum][i].lower())
+
+
+def getCurrentTitle(product):
+    i = 0
+    while(array[0][i] != 'Title'):
+        i += 1
+    return array[product.getRownum()][i]
+
+def addPS(product):
+    global array
+
+#   testF = 'randomTestFile.csv'
+#   cmd = 'touch ' + testF
+#   os.system(cmd)
+#   myfile = open(testF, 'w')
+#   wr = csv.writer(myfile)
+#   for values in array:
+#       wr.writerow(values)
+#   myfile.close()
+   #print(array[0])
+
+    title = getCurrentTitle(product)
+    newTitle = getPrefix("Attribute", product.getRownum()).title() + "'s" + ' ' + title + ' ' + getSuffix("Department Name", product.getRownum()).title()
+    editCell(product.getRownum(), headersDict['Title'], newTitle)
+
+
 
 def editVariant(product):
 
