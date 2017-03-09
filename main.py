@@ -4,15 +4,10 @@ import getopt
 import sys
 import os
 import functions
-from random import randint
-csvfile = ''
-outputfile = ''
-randFilesList = []
+
 
 def main(argv):
-    global csvfile
     csvfile = ''
-    global outputfile
     outputfile = ''
 
     if len(argv) < 1:
@@ -37,62 +32,16 @@ def main(argv):
     if outputfile == '':
         outputfile = 'a.csv'
 
-
-    # prefix = input("Enter a prefix for the title: ")
-    # suffix = input("Enter a suffix for the title: ")
-
+    new_cfile = 'randFileGen3235435345234132543.csv'
     cmd = 'touch ' + outputfile
     os.system(cmd)
-
-    new_cfile = newCFile()
-
-    # functions OK
-    functions.writeNewHeaders(new_cfile, outputfile)
-
-    new_i = cFileFromOutput()
-
-    # functions OK
-    functions.sortVariants(new_i, outputfile)
-
-    # functions
-    functions.parseFile(new_i, outputfile)
-
-    new_i = cFileFromOutput()
-
-    # functions
-    functions.parseVariants(new_i, outputfile)
-
-    deleteFiles()
-
-
-def newCFile():
-    global csvfile
-    global outputfile
-    rand_num = randint(100000,9999999)
-    new_cfile = 'randFileGen' + str(rand_num) + '.csv'
     cmd = 'cp ' + csvfile + ' ' + new_cfile
     os.system(cmd)
 
-    randFilesList.append(new_cfile)
-    return new_cfile
+    new_f = functions.sortVariants(new_cfile, outputfile)
 
-def cFileFromOutput():
-
-    global csvfile
-    global outputfile
-    rand_num = randint(100000,9999999)
-    new_cfile = 'randFileGen' + str(rand_num) + '.csv'
-    cmd = 'cp ' + outputfile + ' ' + new_cfile
-    os.system(cmd)
-
-    randFilesList.append(new_cfile)
-    return new_cfile
-
-def deleteFiles():
-
-    for item in randFilesList:
-        cmd = 'rm ' + item
-        os.system(cmd)
+    # CHANGE THIS TO NEW_F ONCE SORTVARIANTS FINISHED
+    functions.parseFile(new_f, outputfile)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -1,10 +1,8 @@
 import csv
 import os
 import re
-import product
-from nltk.stem import WordNetLemmatizer
-import inflect
 
+import product
 from time import sleep
 
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
@@ -33,8 +31,6 @@ with open('oHeaders.txt') as f:
 
 # array to hold csv file while it's being heavily modified
 array = list(list())
-oldFileArray = list(list())
-productList = list()
 
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
 # GLOBALS
@@ -43,8 +39,6 @@ productList = list()
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
 # CSV Editing Methods
 # /\/\/\/\/\/\/\/\/\\\/\/\/\/\/\/\/\\//\/\/\/\/\/\/\/\/\/\/\/\\/\/\\//\/\/\/\/\/\
-
-# basically readCells method
 def make2dArray(cfile):
     csv_i = open(cfile, 'r')
 
@@ -80,7 +74,7 @@ def parseTitleStr(s):
     replaceStr = ['SM', 'MED', 'LG', 'SMALL', 'MEDIUM', 'LARGE', '-LG',
               'small', 'medium', 'large', 'M', 'XL', 'X-Large',
               'S/P', 'DLX', 'X', 'T', 'GREEN', 'RED', 'BLACK',
-              'BLUE', 'MD', 'XS']
+              'BLUE', 'MD']
 
     strList = s.split()
     for item in replaceStr:
@@ -91,6 +85,13 @@ def parseTitleStr(s):
     return parseTitle(title)
 
 
+def modifyHeaders(cfile, ofile):
+    global headers
+    global array
+    array = make2dArray(cfile)
+    print
+
+
 #regex to remove unwanted things from the title
 def parseTitle(s):
     temp = ''
@@ -98,9 +99,7 @@ def parseTitle(s):
     temp = re.sub(r"(?<=')[A-Z]", lambda m: m.group().lower(), temp)
     # look for anything in parenthesis
     temp = re.sub(r"\(([^\)]+)\)", '', temp)
-
-    #lok for sequences of numbers
-    temp = re.sub(r"[\d\-)(]*\d[\+\d\-)(]*", '', temp)
+    temp = re.sub(r"[\d\-)(]*\d[\d\-)(]*", '', temp)
     return temp
 
 
@@ -153,43 +152,25 @@ def parseFile(cfile, ofile):
         csv_i.close()
         csv_o.close()
 
-def writeNewHeaders(cfile,ofile):
-    global oldFileArray
-    global array
-    oldFileArray = make2dArray(cfile)
-    array = make2dArray(cfile)
-    replaceStr = {"Item Name" : "Title", "Brief Description" : "Body (HTML)", "Size" : "Option1 Value" ,
-                  "Regular Price" : "Variant Price", "MSRP" : "Variant Compare At Price",
-                  "UPC" : "Variant Barcode", "Department Name":"Type", "Vendor Name":"Vendor",
-                  "Qty 1":"Variant Inventory Qty", "Inventory":"Variant Inventory Qty"}
-
-    for i in range(0, len(array[0])):
-        for k, v in replaceStr.items():
-            if k == array[0][i]:
-                array[0][i] = v
-                break
-
-    writeCells(ofile)
-
 
 # puts variants in a list. does this by first 6 characters of the title.
 # if the first 6 chars is the same as another title it's classified as a variant
 def sortVariants(cfile, ofile):
+
     # inputCSV.csv
     csv_i = open(cfile, 'r')
     # output.csv
     csv_o = open(ofile, 'w')
 
     # for holding product objects
-    global productList
-    # for hodling the variants we already touched
+    productList = []
+    # for holding the variants we already touched
     variantList = []
 
     try:
         reader = csv.reader(csv_i)
+        writer = csv.writer(csv_o)
         i = 0
-
-        # just reads csv file into variants
         for row in reader:
             # get the variants and put them in a list of products
             # Product.variants is list of product variants per product
@@ -209,30 +190,26 @@ def sortVariants(cfile, ofile):
             else:
                 # shouldn't happen
                 pass
+            writer.writerow(row)
 
     finally:
         csv_i.close()
-#make productlist global and then make this it's own function
+        csv_o.close()
+
 # makes variants
-
-def parseVariants(cfile, ofile):
-
-    global productList
     global headers
     global array
-
     array = make2dArray(cfile)
-
     for item in productList:
         # if item has variants, parse it
         if len(item.getVariants()) > 0:
-            parseItem(item, isVariant=False)
+            parseItem(cfile, ofile, item, isVariant=False)
             variants = item.getVariants()
             for item in variants:
-                parseItem(item, isVariant=True)
+                parseItem(cfile, ofile, item, isVariant=True)
             # just to avoid header row
         elif item.getTitle() not in headers:
-            parseItem(item, isVariant=False)
+            parseItem(cfile, ofile, item, isVariant=False)
         else:
             pass
     writeCells(ofile)
@@ -243,27 +220,26 @@ def parseVariants(cfile, ofile):
     os.system(cmd)
     return randFileName
 
+
 def parseItem(product, isVariant):
+
     if isVariant:
-        generalEdits(product)
         addHandle(product)
         editSize(product)
         editColor(product)
         editVariant(product)
     else:
-        generalEdits(product)
         addHandle(product)
         editSize(product)
         editColor(product)
 
+
 def addHandle(product):
-    handle = parseTitleStr(product.getTitle())
-    handle = handle.lower()
-    handle = handle.strip()
-    handle = handle.replace(' ', '-')
+    title = parseTitleStr(product.getTitle())
+    title = title.lower()
+    title = title.replace(' ', '-')
 
-    editCell(product.getRownum(), headersDict['Handle'], handle)
-
+    editCell(product.getRownum(), 0, title)
 
 def editSize(product):
     global headersDict
@@ -278,87 +254,12 @@ def editSize(product):
     else:
         for size in sizes:
             if size in product.getTitle():
-                size = parseSize(size)
                 editCell(product.getRownum(), headersDict['Option1 Name'], 'Size')
-                editCell(product.getRownum(), headersDict['Option1 Value'], size.title())
+                editCell(product.getRownum(), headersDict['Option1 Value'], size)
                 break
-
-def parseSize(str):
-    xsmall = ['XS']
-    small = ['SM', 'SMALL', 'S', 'small']
-    medium = ['MED','MEDIUM','medium','M','MD','std','STD']
-    large = ['LG','LARGE','large','l','L']
-    xlarge = ['XLARGE','X-LARGE','X-Large','XL']
-    std = ['STD', 'std', 'stdrd']
-
-    if str in small:
-        str = 'Small'
-    elif str in xsmall:
-        str = 'Extra Small'
-    elif str in medium:
-        str = 'Medium'
-    elif str in large:
-        str = 'Large'
-    elif str in xlarge:
-        str = 'Extra Large'
-    elif str in std:
-        str = 'Standard'
-    return str
-
-def generalEdits(product):
-    editCell(product.getRownum(), headersDict['Variant Requires Shipping'], 'True')
-    editCell(product.getRownum(), headersDict['Variant Inventory Policy'], 'deny')
-    editCell(product.getRownum(), headersDict['Variant Fulfillment Service'], 'manual')
-    editCell(product.getRownum(), headersDict['Variant Inventory Tracker'], 'shopify')
-    addPS(product)
-
-def getPrefix(key, rownum):
-    i = 0
-    while(oldFileArray[0][i]) != key:
-        i += 1
-    p = inflect.engine()
-    if(p.singular_noun(oldFileArray[rownum][i])) == False:
-        return oldFileArray[rownum][i].lower()
-    else:
-        return str(p.singular_noun(oldFileArray[rownum][i].lower()))
-
-def getSuffix(key, rownum):
-    i = 0
-    while(oldFileArray[0][i]) != key:
-        i += 1
-
-    wnl = WordNetLemmatizer()
-
-    return wnl.lemmatize(oldFileArray[rownum][i].lower())
-
-
-def getCurrentTitle(product):
-    i = 0
-    while(array[0][i] != 'Title'):
-        i += 1
-    return array[product.getRownum()][i]
-
-def addPS(product):
-    global array
-
-#   testF = 'randomTestFile.csv'
-#   cmd = 'touch ' + testF
-#   os.system(cmd)
-#   myfile = open(testF, 'w')
-#   wr = csv.writer(myfile)
-#   for values in array:
-#       wr.writerow(values)
-#   myfile.close()
-   #print(array[0])
-
-    title = getCurrentTitle(product)
-    newTitle = getPrefix("Attribute", product.getRownum()).title() + "'s" + ' ' + title + ' ' + getSuffix("Department Name", product.getRownum()).title()
-    editCell(product.getRownum(), headersDict['Title'], newTitle)
-
 
 
 def editVariant(product):
-
     global headersDict
 
     editCell(product.getRownum(), headersDict['Title'], '')
@@ -368,6 +269,7 @@ def editVariant(product):
     editCell(product.getRownum(), headersDict['Option1 Name'], '')
     editCell(product.getRownum(), headersDict['Option2 Name'], '')
     editCell(product.getRownum(), headersDict['Option3 Name'], '')
+
 
 def editColor(product):
 
