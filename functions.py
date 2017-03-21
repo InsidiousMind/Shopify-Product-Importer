@@ -169,7 +169,6 @@ def writeNewHeaders(cfile,ofile):
             if k == array[0][i]:
                 array[0][i] = v
                 break
-
     writeCells(ofile)
 
 

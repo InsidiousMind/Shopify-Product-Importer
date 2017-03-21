@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import getopt
 import sys
@@ -70,6 +70,10 @@ def newCFile():
     global outputfile
     rand_num = randint(100000,9999999)
     new_cfile = 'randFileGen' + str(rand_num) + '.csv'
+    cmd = 'pwd'
+    print(os.system(cmd))
+    cmd = 'touch ' + new_cfile
+    os.system(cmd)
     cmd = 'cp ' + csvfile + ' ' + new_cfile
     os.system(cmd)
 
