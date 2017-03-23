@@ -1,0 +1,20 @@
+1   Item Number
+2   Item Name
+3   Item Description
+4   Brief Description
+5   Attribute
+6   Size
+7   Regular Price
+8   MSRP
+9   UPC
+10  Department Name
+11  Vendor Name
+12  Qty 1
+13  Custom Field 1
+14  
+15  
+16  
+17  
+18  
+19  
+20  
