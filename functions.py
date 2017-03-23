@@ -100,6 +100,7 @@ def modifyHeaders(cfile, ofile):
 def parseTitle(s):
     temp = ''
     temp = s.title()
+    #                          pattern     //transformation on pattern   //string
     temp = re.sub(r"(?<=')[A-Z]", lambda m: m.group().lower(), temp)
     # look for anything in parenthesis
     temp = re.sub(r"\(([^\)]+)\)", '', temp)
